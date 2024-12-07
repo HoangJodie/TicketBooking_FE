@@ -1,51 +1,70 @@
-import { useEffect, useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
+import { useState, useEffect } from 'react'
+import userAPI from '../services/userAPI'
+import { toast } from 'react-toastify'
 
 function Profile() {
-  const { user } = useAuth()
-  const [bookings, setBookings] = useState([])
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Fetch user's booking history
-    const fetchBookings = async () => {
-      try {
-        const response = await fetch('http://localhost:8080/api/bookings/me', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        })
-        const data = await response.json()
-        setBookings(data)
-      } catch (error) {
-        console.error('Error fetching bookings:', error)
-      }
-    }
+    fetchProfile()
+  }, [])
 
-    if (user) {
-      fetchBookings()
+  const fetchProfile = async () => {
+    try {
+      const data = await userAPI.getProfile()
+      setProfile(data)
+    } catch (error) {
+      toast.error('Không thể tải thông tin người dùng')
+    } finally {
+      setLoading(false)
     }
-  }, [user])
+  }
 
-  if (!user) return <div>Please login to view profile</div>
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>
+  }
 
   return (
-    <div className="profile">
-      <h2>Thông tin cá nhân</h2>
-      <div className="user-info">
-        <p>Họ tên: {user.name}</p>
-        <p>Email: {user.email}</p>
-      </div>
-
-      <h3>Lịch sử đặt vé</h3>
-      <div className="booking-history">
-        {bookings.map((booking) => (
-          <div key={booking.id} className="booking-item">
-            <p>Phim: {booking.movieTitle}</p>
-            <p>Ngày chiếu: {booking.showtime}</p>
-            <p>Số ghế: {booking.seats.join(', ')}</p>
+    <div className="max-w-2xl mx-auto mt-10 p-6 bg-white rounded-lg shadow">
+      <h2 className="text-2xl font-bold mb-6">Thông tin tài khoản</h2>
+      
+      {profile && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Họ tên</label>
+            <p className="mt-1 text-gray-900">{profile.full_name}</p>
           </div>
-        ))}
-      </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <p className="mt-1 text-gray-900">{profile.email}</p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Số điện thoại</label>
+            <p className="mt-1 text-gray-900">{profile.phone_number || 'Chưa cập nhật'}</p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
+            <p className="mt-1">
+              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                profile.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {profile.status === 'active' ? 'Đang hoạt động' : 'Đã khóa'}
+              </span>
+            </p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Ngày tạo tài khoản</label>
+            <p className="mt-1 text-gray-900">
+              {new Date(profile.created_at).toLocaleDateString('vi-VN')}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

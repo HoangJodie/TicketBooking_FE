@@ -1,139 +1,155 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 import movieAPI from "../services/movieAPI";
 
 function Home() {
   const [movies, setMovies] = useState([]);
-  const [upcomingMovies, setUpcomingMovies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState(null);
+  const limit = 12; // Số phim mỗi trang
 
   useEffect(() => {
-    const fetchMovies = async () => {
-      try {
-        const response = await movieAPI.getMovies();
-        // Phân loại phim đang chiếu và sắp chiếu dựa vào ngày
-        const now = new Date();
-        const current = [];
-        const upcoming = [];
-
-        response.data.forEach((movie) => {
-          const releaseDate = new Date(movie.releaseDate);
-          if (releaseDate <= now) {
-            current.push(movie);
-          } else {
-            upcoming.push(movie);
-          }
-        });
-
-        setMovies(current);
-        setUpcomingMovies(upcoming);
-      } catch (error) {
-        console.error("Error fetching movies:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchMovies();
-  }, []);
+  }, [page, searchTerm]);
 
-  if (loading)
+  const fetchMovies = async () => {
+    try {
+      setLoading(true);
+      const response = await movieAPI.getMovies({
+        page,
+        limit,
+        search: searchTerm,
+      });
+      
+      setMovies(response.data);
+      setMeta(response.meta);
+    } catch (error) {
+      console.error("Error fetching movies:", error);
+      toast.error("Không thể tải danh sách phim");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setPage(1); // Reset về trang 1 khi tìm kiếm
+  };
+
+  const renderPagination = () => {
+    if (!meta) return null;
+
+    const pages = [];
+    for (let i = 1; i <= meta.last_page; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => setPage(i)}
+          className={`px-3 py-1 mx-1 rounded ${
+            page === i
+              ? "bg-indigo-600 text-white"
+              : "bg-white text-gray-700 hover:bg-gray-100"
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      <div className="flex justify-center mt-8">
+        <button
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-3 py-1 mx-1 rounded bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+        >
+          Trước
+        </button>
+        {pages}
+        <button
+          onClick={() => setPage(p => Math.min(meta.last_page, p + 1))}
+          disabled={page === meta.last_page}
+          className="px-3 py-1 mx-1 rounded bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+        >
+          Sau
+        </button>
       </div>
     );
+  };
 
   return (
-    <div className="home bg-gray-100">
-      {/* Hero Banner */}
-      <div className="relative h-[500px] overflow-hidden">
-        <img
-          src={movies[0]?.poster}
-          alt="banner"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent">
-          <div className="container mx-auto h-full flex items-end pb-20 px-4">
-            <div className="text-white">
-              <h1 className="text-5xl font-bold mb-4">{movies[0]?.title}</h1>
-              <p className="text-lg mb-6">{movies[0]?.description}</p>
+    <div className="container mx-auto px-4 py-8">
+      {/* Search bar */}
+      <form onSubmit={handleSearch} className="mb-8">
+        <div className="max-w-xl mx-auto flex gap-2">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Tìm kiếm phim..."
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <button
+            type="submit"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Tìm kiếm
+          </button>
+        </div>
+      </form>
+
+      {loading ? (
+        <div className="text-center py-10">Đang tải...</div>
+      ) : (
+        <>
+          {/* Movie grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {movies.map((movie) => (
               <Link
-                to={`/movies/${movies[0]?.id}`}
-                className="bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-600 transition"
+                key={movie.id}
+                to={`/movies/${movie.id}`}
+                className="group"
               >
-                Đặt vé ngay
+                <div className="bg-white rounded-lg shadow-md overflow-hidden transition transform hover:scale-105">
+                  <div className="aspect-w-2 aspect-h-3 relative">
+                    <img
+                      src={movie.poster}
+                      alt={movie.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity" />
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg mb-1 group-hover:text-indigo-600">
+                      {movie.title}
+                    </h3>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <p>{movie.duration} phút</p>
+                      <p className="line-clamp-1">{movie.genres.join(", ")}</p>
+                      <p className="text-indigo-600">
+                        {new Date(movie.releaseDate).toLocaleDateString("vi-VN")}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </Link>
-            </div>
+            ))}
           </div>
-        </div>
-      </div>
 
-      {/* Phim đang chiếu */}
-      <div className="container mx-auto py-12 px-4">
-        <h2 className="text-3xl font-bold mb-8 text-gray-800">
-          Phim đang chiếu
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-          {movies.map((movie) => (
-            <Link to={`/movies/${movie.id}`} key={movie.id} className="group">
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div className="relative">
-                  <img
-                    src={movie.poster}
-                    alt={movie.title}
-                    className="w-full h-[300px] object-cover transform group-hover:scale-105 transition duration-300"
-                  />
-                  <div className="absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded text-sm">
-                    {movie.duration} phút
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">
-                    {movie.title}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {movie.genres.join(", ")}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+          {/* Pagination */}
+          {renderPagination()}
 
-      {/* Phim sắp chiếu */}
-      <div className="container mx-auto py-12 px-4">
-        <h2 className="text-3xl font-bold mb-8 text-gray-800">
-          Phim sắp chiếu
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-          {upcomingMovies.map((movie) => (
-            <Link to={`/movies/${movie.id}`} key={movie.id} className="group">
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                <div className="relative">
-                  <img
-                    src={movie.poster}
-                    alt={movie.title}
-                    className="w-full h-[300px] object-cover transform group-hover:scale-105 transition duration-300"
-                  />
-                  <div className="absolute top-2 right-2 bg-orange-500 text-white px-2 py-1 rounded text-sm">
-                    {new Date(movie.releaseDate).toLocaleDateString("vi-VN")}
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-800 mb-2 line-clamp-2">
-                    {movie.title}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {movie.genres.join(", ")}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+          {/* No results message */}
+          {movies.length === 0 && (
+            <div className="text-center py-10 text-gray-500">
+              Không tìm thấy phim nào
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

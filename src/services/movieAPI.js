@@ -1,20 +1,38 @@
 import axiosClient from "./axiosClient";
 
 const movieAPI = {
-  getMovies: () => {
-    return axiosClient.get("/movies");
+  getMovies: (params = {}) => {
+    return axiosClient.get('/api/v1/movies', {
+      params: {
+        page: params.page || 1,
+        limit: params.limit || 12,
+        search: params.search || '',
+      }
+    });
   },
 
   getMovieById: (id) => {
-    return axiosClient.get(`/movies/${id}`);
+    return axiosClient.get(`/api/v1/movies/${id}`);
   },
 
-  getShowtimes: (movieId) => {
-    return axiosClient.get(`/movies/${movieId}/showtimes`);
+  createMovie: (formData) => {
+    return axiosClient.post("/api/v1/movies", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
   },
 
-  bookTickets: (data) => {
-    return axiosClient.post("/bookings", data);
+  updateMovie: (id, movieData) => {
+    return axiosClient.put(`/movies/${id}`, movieData);
+  },
+
+  deleteMovie: (id) => {
+    return axiosClient.delete(`/movies/${id}`);
+  },
+
+  getGenres: () => {
+    return axiosClient.get("/api/v1/movies/genres");
   },
 };
 
