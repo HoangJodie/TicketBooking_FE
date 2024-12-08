@@ -14,25 +14,44 @@ function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const validateForm = (data) => {
+    const errors = {};
+    
+    if (!data.email) {
+      errors.email = 'Email là bắt buộc';
+    } else if (!/\S+@\S+\.\S+/.test(data.email)) {
+      errors.email = 'Email không hợp lệ';
+    }
+    
+    if (!data.password) {
+      errors.password = 'Mật khẩu là bắt buộc';
+    } else if (data.password.length < 6) {
+      errors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+    }
+    
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
-    setLoading(true)
     
+    const errors = validateForm(formData);
+    if (Object.keys(errors).length > 0) {
+      Object.values(errors).forEach(error => toast.error(error));
+      return;
+    }
+
     try {
-      console.log('Submitting login form:', formData)
-      const response = await login(formData.email, formData.password)
-      console.log('Login successful:', response)
-      
+      await login({
+        email: formData.email,
+        password: formData.password
+      })
       navigate('/')
     } catch (error) {
       console.error('Login submission error:', error)
-      setError(error.message)
-      setLoading(false)
-      return
+      const errorMessage = error.response?.data?.message || 'Đăng nhập thất bại'
+      toast.error(errorMessage)
     }
-    
-    setLoading(false)
   }
 
   return (

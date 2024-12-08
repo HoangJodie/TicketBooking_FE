@@ -11,9 +11,9 @@ function Navbar() {
   const navigate = useNavigate()
 
   console.log('Current user in Navbar:', user)
+  console.log('User role:', user?.role_id)
   
-  const isAdmin = user?.role_id === 1
-  console.log('Role ID from user:', user?.role_id)
+  const isAdmin = user && Number(user.role_id) === 1
   console.log('Is admin:', isAdmin)
 
   useEffect(() => {
@@ -80,9 +80,9 @@ function Navbar() {
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
                   className="flex items-center space-x-2 text-gray-300 hover:text-white px-3 py-2 rounded-md focus:outline-none"
                 >
-                  <span>{user.full_name}</span>
+                  <span>{user.full_name || user.email}</span>
                   <svg
-                    className={`h-5 w-5 transform ${isMenuOpen ? 'rotate-180' : ''} transition-transform duration-200`}
+                    className={`h-5 w-5 transform ${isMenuOpen ? 'rotate-180' : ''}`}
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"
@@ -96,18 +96,17 @@ function Navbar() {
                 </button>
 
                 {isMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
+                  <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5">
                     <Link
                       to="/profile"
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Thông tin tài khoản
                     </Link>
                     <button
-                      type="button"
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Đăng xuất
                     </button>

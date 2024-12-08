@@ -23,9 +23,7 @@ const processQueue = (error, token = null) => {
 };
 
 axiosClient.interceptors.response.use(
-  (response) => {
-    return response.data;
-  },
+  (response) => response.data,
   async (error) => {
     const originalRequest = error.config;
 
@@ -50,7 +48,12 @@ axiosClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const response = await axiosClient.post('/auth/refresh');
+        const refreshToken = localStorage.getItem('refreshToken');
+        
+        const response = await axiosClient.post('/auth/refresh', {
+          refreshToken: refreshToken
+        });
+        
         const { accessToken } = response;
         
         localStorage.setItem('token', accessToken);
@@ -63,29 +66,31 @@ axiosClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         localStorage.removeItem('token');
-        window.location.href = '/login';
+        localStorage.removeItem('refreshToken');
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
-    console.error('Axios error:', error);
-    if (error.response) {
-      console.error('Error response:', error.response);
+    if (error.response?.status === 401) {
+      console.log('401 error:', error.response)
+      console.log('Request config:', error.config)
+      console.log('Current token:', localStorage.getItem('token'))
     }
+
     return Promise.reject(error);
   }
 );
 
 axiosClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  console.log('Making request to:', config.url);
-  console.log('With token:', token);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 export default axiosClient;

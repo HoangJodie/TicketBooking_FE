@@ -2,16 +2,39 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import movieAPI from '../../services/movieAPI'
+import roomAPI from '../../services/roomAPI'
+import showtimeAPI from '../../services/showtimeAPI'
 
 function MovieDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [movie, setMovie] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [rooms, setRooms] = useState([])
+  const [showTimeForm, setShowTimeForm] = useState({
+    room_id: '',
+    show_date: '',
+    start_time: '',
+    base_price: ''
+  })
+  const [showShowtimeForm, setShowShowtimeForm] = useState(false)
 
   useEffect(() => {
     fetchMovieDetails()
   }, [id])
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        const response = await roomAPI.getRooms()
+        setRooms(response.data)
+      } catch (error) {
+        console.error('Error fetching rooms:', error)
+        toast.error('Không thể tải danh sách phòng chiếu')
+      }
+    }
+    fetchRooms()
+  }, [])
 
   const fetchMovieDetails = async () => {
     try {
@@ -25,6 +48,58 @@ function MovieDetails() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleAddShowtime = async (e) => {
+    e.preventDefault()
+    try {
+      const endTime = calculateEndTime(showTimeForm.start_time)
+      
+      // Log để debug
+      console.log('Form data before submit:', {
+        ...showTimeForm,
+        end_time: endTime
+      })
+
+      // Đảm bảo room_id là số
+      const data = {
+        ...showTimeForm,
+        room_id: Number(showTimeForm.room_id),
+        base_price: Number(showTimeForm.base_price),
+        end_time: endTime
+      }
+
+      // Log request data
+      console.log('Sending request with data:', data)
+
+      await showtimeAPI.createShowtime(id, data)
+      toast.success('Thêm lịch chiếu thành công')
+      setShowShowtimeForm(false)
+      setShowTimeForm({
+        room_id: '',
+        show_date: '',
+        start_time: '',
+        base_price: ''
+      })
+      fetchMovieDetails()
+    } catch (error) {
+      // Log chi tiết lỗi
+      console.error('Error adding showtime:', error.response?.data)
+      const errorMessage = error.response?.data?.message || 'Không thể thêm lịch chiếu'
+      toast.error(errorMessage)
+    }
+  }
+
+  const calculateEndTime = (startTime) => {
+    if (!startTime || !movie?.duration) return ''
+    
+    const [hours, minutes] = startTime.split(':').map(Number)
+    const totalMinutes = hours * 60 + minutes + movie.duration
+    
+    const endHours = Math.floor(totalMinutes / 60)
+    const endMinutes = totalMinutes % 60
+    
+    return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`
   }
 
   if (loading) {
@@ -108,7 +183,7 @@ function MovieDetails() {
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div>
                 <h3 className="text-gray-600">Thời lượng</h3>
-                <p className="text-lg font-semibold">{movie.duration} ph��t</p>
+                <p className="text-lg font-semibold">{movie.duration} phút</p>
               </div>
               <div>
                 <h3 className="text-gray-600">Ngày khởi chiếu</h3>
@@ -192,6 +267,125 @@ function MovieDetails() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Quản lý lịch chiếu</h2>
+          <button
+            onClick={() => setShowShowtimeForm(true)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+          >
+            Thêm lịch chiếu
+          </button>
+        </div>
+
+        {showShowtimeForm && (
+          <form onSubmit={handleAddShowtime} className="bg-gray-50 p-6 rounded-lg">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Phòng chiếu
+                </label>
+                <select
+                  value={showTimeForm.room_id}
+                  onChange={(e) => setShowTimeForm({
+                    ...showTimeForm,
+                    room_id: e.target.value
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">Chọn phòng chiếu</option>
+                  {rooms.map((room) => (
+                    <option key={room.room_id} value={room.room_id}>
+                      {room.name} (Sức chứa: {room.capacity})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Ngày chiếu
+                </label>
+                <input
+                  type="date"
+                  value={showTimeForm.show_date}
+                  onChange={(e) => setShowTimeForm({
+                    ...showTimeForm,
+                    show_date: e.target.value
+                  })}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Giờ bắt đầu
+                </label>
+                <input
+                  type="time"
+                  value={showTimeForm.start_time}
+                  onChange={(e) => setShowTimeForm({
+                    ...showTimeForm,
+                    start_time: e.target.value
+                  })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Giờ kết thúc (tự động)
+                </label>
+                <input
+                  type="time"
+                  value={calculateEndTime(showTimeForm.start_time)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50"
+                  disabled
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Giá vé cơ bản
+                </label>
+                <input
+                  type="number"
+                  value={showTimeForm.base_price}
+                  onChange={(e) => setShowTimeForm({
+                    ...showTimeForm,
+                    base_price: e.target.value
+                  })}
+                  min="0"
+                  step="1000"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-4">
+              <button
+                type="button"
+                onClick={() => setShowShowtimeForm(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              >
+                Thêm lịch chiếu
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   )

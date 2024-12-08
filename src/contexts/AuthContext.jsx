@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import userAPI from '../services/userAPI'
 import { toast } from 'react-toastify'
-import axiosClient from '../services/axiosClient'
+import { jwtDecode } from 'jwt-decode'
 
 const AuthContext = createContext(null)
 
@@ -9,156 +9,86 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    checkAuthStatus()
-  }, [])
-
-  const fetchUserDetails = async (userId) => {
+  const getUserFromToken = (token) => {
     try {
-      console.log('Fetching user details for ID:', userId)
-      const response = await userAPI.getUserById(userId)
-      console.log('User details response:', response)
-      return response
+      const decoded = jwtDecode(token)
+      return {
+        user_id: decoded.user_id,
+        email: decoded.email,
+        role_id: decoded.role_id
+      }
     } catch (error) {
-      console.error('Error fetching user details:', error)
+      console.error('Error decoding token:', error)
       return null
     }
   }
 
-  const checkAuthStatus = async () => {
+  useEffect(() => {
+    checkAuth()
+  }, [])
+
+  const checkAuth = async () => {
     try {
       const token = localStorage.getItem('token')
-      if (!token) {
-        setUser(null)
-        return
-      }
-
-      const tokenPayload = JSON.parse(atob(token.split('.')[1]))
-      console.log('Token payload in checkAuthStatus:', tokenPayload)
-
-      try {
-        const userProfile = await userAPI.getProfile()
-        setUser({
-          ...userProfile,
-          role_id: tokenPayload.role_id // Đảm bảo lấy role_id từ token
-        })
-      } catch (error) {
-        setUser({
-          user_id: tokenPayload.user_id,
-          email: tokenPayload.email,
-          role_id: tokenPayload.role_id,
-          full_name: tokenPayload.full_name || tokenPayload.email
-        })
+      if (token) {
+        const tokenUser = getUserFromToken(token)
+        if (tokenUser) {
+          setUser(tokenUser)
+        }
       }
     } catch (error) {
-      setUser(null)
+      if (error.response?.status === 401) {
+        setUser(null)
+        localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  const login = async (email, password) => {
+  const login = async (credentials) => {
     try {
-      console.log('Attempting login for:', email)
-      const response = await userAPI.login({ email, password })
-      console.log('Login response in AuthContext:', response)
+      const response = await userAPI.login(credentials)
+      console.log('Login response:', response)
       
-      if (response && response.accessToken) {
-        console.log('Saving token:', response.accessToken)
-        localStorage.setItem('token', response.accessToken)
-        
-        // Giải mã token để lấy thông tin user
-        const tokenPayload = JSON.parse(atob(response.accessToken.split('.')[1]))
-        console.log('Token payload:', tokenPayload)
-
-        // Lấy thông tin profile từ API
-        try {
-          const userProfile = await userAPI.getProfile()
-          console.log('User profile after login:', userProfile)
-          
-          // Kết hợp thông tin t� token và profile, đảm bảo giữ nguyên role_id
-          setUser({
-            ...userProfile,
-            role_id: tokenPayload.role_id // Đảm bảo lấy role_id từ token
-          })
-        } catch (profileError) {
-          console.error('Error fetching profile after login:', profileError)
-          // Fallback: dùng thông tin từ token
-          setUser({
-            user_id: tokenPayload.user_id,
-            email: tokenPayload.email,
-            role_id: tokenPayload.role_id,
-            full_name: tokenPayload.full_name || email
-          })
-        }
-        
-        toast.success('Đăng nhập thành công!')
-        return response
+      localStorage.setItem('token', response.accessToken)
+      localStorage.setItem('refreshToken', response.refreshToken)
+      
+      const tokenUser = getUserFromToken(response.accessToken)
+      if (tokenUser) {
+        setUser(tokenUser)
+        console.log('Set user state from token:', tokenUser)
       } else {
-        console.error('Invalid login response:', response)
-        toast.error('Đăng nhập thất bại: Phản hồi không hợp lệ từ server')
-        throw new Error('Invalid login response format')
+        throw new Error('Invalid token data')
       }
+      
+      return response
     } catch (error) {
       console.error('Login error:', error)
-      let errorMessage = 'Đăng nhập thất bại'
-
-      if (error.response) {
-        switch (error.response.status) {
-          case 401:
-            errorMessage = 'Email hoặc mật khẩu không đúng'
-            break
-          case 403:
-            errorMessage = 'Tài khoản của bạn đã bị khóa'
-            break
-          case 404:
-            errorMessage = 'Tài khoản không tồn tại'
-            break
-          default:
-            errorMessage = error.response.data?.message || 'Có lỗi xảy ra khi đăng nhập'
-        }
-      }
-
-      toast.error(errorMessage)
-      throw new Error(errorMessage)
+      throw error
     }
   }
 
   const logout = async () => {
     try {
-      console.log('Starting logout process...')
       await userAPI.logout()
-      console.log('API logout successful')
-      
-      // Token đã được xóa trong userAPI.logout
-      setUser(null)
-      
-      // Reset headers của axiosClient
-      delete axiosClient.defaults.headers.common['Authorization']
-      
-      toast.success('Đăng xuất thành công')
-      return true
     } catch (error) {
-      console.error('Logout error in AuthContext:', error)
-      
-      // Nếu lỗi 401 hoặc 400, vẫn xóa user state
-      if (error.response?.status === 401 || error.response?.status === 400) {
-        setUser(null)
-        delete axiosClient.defaults.headers.common['Authorization']
-        return true
-      }
-      
-      toast.error('Có lỗi xảy ra khi đăng xuất')
-      return false
+      console.error('Logout error:', error)
+    } finally {
+      setUser(null)
+      localStorage.removeItem('token')
+      localStorage.removeItem('refreshToken')
     }
   }
 
-  // Log mỗi khi user state thay đổi
-  useEffect(() => {
-  }, [user])
-
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      loading
+    }}>
       {children}
     </AuthContext.Provider>
   )

@@ -3,16 +3,14 @@ import axiosClient from './axiosClient'
 const userAPI = {
   login: async (data) => {
     try {
-      console.log('API login request:', data)
-      const response = await axiosClient.post('/auth/login', data)
-      if (response && response.accessToken) {
-        console.log('Access token received:', response.accessToken)
-      } else {
-        console.error('Invalid response structure:', response)
-      }
+      console.log('Sending login request with data:', data)
+      const response = await axiosClient.post('/auth/login', {
+        email: data.email,
+        password: data.password
+      })
       return response
     } catch (error) {
-      console.error('API login error:', error)
+      console.error('API login error:', error.response?.data)
       throw error
     }
   },
@@ -24,19 +22,10 @@ const userAPI = {
         throw new Error('No token found')
       }
 
-      console.log('Sending logout request with token:', token)
-      const response = await axiosClient.post('/auth/logout', {}, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      console.log('Logout response:', response)
-
+      const response = await axiosClient.post('/auth/logout')
       localStorage.removeItem('token')
       return response
     } catch (error) {
-      console.error('Logout API error:', error)
       if (error.response?.status === 401 || error.response?.status === 400) {
         localStorage.removeItem('token')
       }
