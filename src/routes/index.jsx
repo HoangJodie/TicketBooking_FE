@@ -5,13 +5,14 @@ import AuthGuard from '../components/AuthGuard';
 import Home from '../pages/Home';
 import Movies from '../pages/Movies';
 import MovieDetail from '../pages/MovieDetail';
-import Booking from '../pages/Booking';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Profile from '../pages/Profile';
 import NotFound from '../pages/NotFound';
 import MovieManagement from '../pages/admin/MovieManagement';
 import MovieDetails from '../pages/admin/MovieDetails';
+import SeatSelection from '../pages/SeatSelection';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 function AppRoutes() {
   return (
@@ -42,11 +43,16 @@ function AppRoutes() {
 
         {/* Protected Routes */}
         <Route
-          path="booking/:id"
+          path="booking/:showtimeId"
           element={
-            <PrivateRoute>
-              <Booking />
-            </PrivateRoute>
+            <ErrorBoundary
+              fallback={<div>Something went wrong</div>}
+              onError={(error) => console.error('Error in SeatSelection:', error)}
+            >
+              <PrivateRoute>
+                <SeatSelection />
+              </PrivateRoute>
+            </ErrorBoundary>
           }
         />
         <Route

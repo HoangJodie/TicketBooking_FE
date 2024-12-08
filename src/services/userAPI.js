@@ -1,13 +1,11 @@
 import axiosClient from './axiosClient'
 
 const userAPI = {
-  login: async (data) => {
+  login: async (credentials) => {
     try {
-      console.log('Sending login request with data:', data)
-      const response = await axiosClient.post('/auth/login', {
-        email: data.email,
-        password: data.password
-      })
+      console.log('Sending login request with data:', credentials)
+      const response = await axiosClient.post('/auth/login', credentials)
+      console.log('Raw login response:', response)
       return response
     } catch (error) {
       console.error('API login error:', error.response?.data)
@@ -45,8 +43,15 @@ const userAPI = {
     return axiosClient.post('/users/register', data)
   },
 
-  getProfile: () => {
-    return axiosClient.get('/users/profile')
+  getProfile: async () => {
+    try {
+      const response = await axiosClient.get('/users/profile');
+      console.log('Profile API response:', response);
+      return response;
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      throw error;
+    }
   }
 }
 

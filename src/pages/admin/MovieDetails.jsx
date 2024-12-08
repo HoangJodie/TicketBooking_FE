@@ -18,75 +18,99 @@ function MovieDetails() {
     base_price: ''
   })
   const [showShowtimeForm, setShowShowtimeForm] = useState(false)
+  const [showtimes, setShowtimes] = useState([])
 
   useEffect(() => {
-    fetchMovieDetails()
-  }, [id])
-
-  useEffect(() => {
-    const fetchRooms = async () => {
+    const fetchData = async () => {
       try {
-        const response = await roomAPI.getRooms()
-        setRooms(response.data)
+        setLoading(true)
+        // Fetch movie details
+        const movieResponse = await movieAPI.getMovieById(id)
+        console.log('Movie response:', movieResponse)
+        
+        if (movieResponse?.data?.status === 'success') {
+          setMovie(movieResponse.data.data)
+        } else {
+          throw new Error('Invalid movie data')
+        }
+
+        // Fetch rooms
+        const roomResponse = await roomAPI.getRooms()
+        console.log('Rooms response:', roomResponse)
+        
+        if (roomResponse?.data?.status === 'success' && Array.isArray(roomResponse.data.data)) {
+          setRooms(roomResponse.data.data)
+        } else {
+          setRooms([])
+        }
+
+        // Fetch showtimes
+        const showtimeResponse = await showtimeAPI.getShowtimesByMovie(id)
+        console.log('Showtimes response:', showtimeResponse)
+        
+        if (showtimeResponse?.data?.status === 'success' && Array.isArray(showtimeResponse.data.data)) {
+          setShowtimes(showtimeResponse.data.data)
+        } else {
+          setShowtimes([])
+        }
       } catch (error) {
-        console.error('Error fetching rooms:', error)
-        toast.error('Không thể tải danh sách phòng chiếu')
+        console.error('Error fetching data:', error)
+        toast.error('Không thể tải thông tin phim')
+        navigate('/admin/movies')
+      } finally {
+        setLoading(false)
       }
     }
-    fetchRooms()
-  }, [])
 
-  const fetchMovieDetails = async () => {
-    try {
-      setLoading(true)
-      const response = await movieAPI.getMovieById(id)
-      setMovie(response.data)
-    } catch (error) {
-      console.error('Error fetching movie details:', error)
-      toast.error('Không thể tải thông tin phim')
-      navigate('/admin/movies')
-    } finally {
-      setLoading(false)
-    }
-  }
+    fetchData()
+  }, [id, navigate])
 
   const handleAddShowtime = async (e) => {
     e.preventDefault()
     try {
       const endTime = calculateEndTime(showTimeForm.start_time)
       
-      // Log để debug
-      console.log('Form data before submit:', {
-        ...showTimeForm,
-        end_time: endTime
-      })
-
-      // Đảm bảo room_id là số
-      const data = {
-        ...showTimeForm,
-        room_id: Number(showTimeForm.room_id),
-        base_price: Number(showTimeForm.base_price),
-        end_time: endTime
+      // Validate dữ liệu
+      if (!showTimeForm.room_id || !showTimeForm.show_date || !showTimeForm.start_time || !showTimeForm.base_price) {
+        toast.error('Vui lòng điền đầy đủ thông tin')
+        return
       }
 
-      // Log request data
-      console.log('Sending request with data:', data)
+      // Format dữ liệu
+      const data = {
+        room_id: Number(showTimeForm.room_id),
+        show_date: showTimeForm.show_date,
+        start_time: showTimeForm.start_time,
+        end_time: endTime,
+        base_price: Number(showTimeForm.base_price)
+      }
 
-      await showtimeAPI.createShowtime(id, data)
-      toast.success('Thêm lịch chiếu thành công')
-      setShowShowtimeForm(false)
-      setShowTimeForm({
-        room_id: '',
-        show_date: '',
-        start_time: '',
-        base_price: ''
-      })
-      fetchMovieDetails()
+      console.log('Sending showtime data:', data)
+
+      const response = await showtimeAPI.createShowtime(id, data)
+      console.log('Showtime response:', response)
+
+      if (response?.data?.status === 'success') {
+        toast.success('Thêm lịch chiếu thành công')
+        setShowShowtimeForm(false)
+        setShowTimeForm({
+          room_id: '',
+          show_date: '',
+          start_time: '',
+          base_price: ''
+        })
+        
+        // Fetch lại danh sách lịch chiếu
+        const updatedShowtimes = await showtimeAPI.getShowtimesByMovie(id)
+        if (updatedShowtimes?.data?.status === 'success') {
+          setShowtimes(updatedShowtimes.data.data)
+        }
+      } else {
+        throw new Error('Invalid response')
+      }
     } catch (error) {
-      // Log chi tiết lỗi
-      console.error('Error adding showtime:', error.response?.data)
-      const errorMessage = error.response?.data?.message || 'Không thể thêm lịch chiếu'
-      toast.error(errorMessage)
+      console.error('Error adding showtime:', error)
+      toast.error(error.response?.data?.message || 'Không thể thêm lịch chiếu')
     }
   }
 
@@ -101,6 +125,24 @@ function MovieDetails() {
     
     return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`
   }
+
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    // Nếu timeString đã có format HH:mm
+    if (timeString.length === 5) return timeString;
+    // Nếu timeString là ISO format
+    try {
+      const time = new Date(timeString);
+      return time.toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return timeString;
+    }
+  };
 
   if (loading) {
     return (
@@ -245,7 +287,7 @@ function MovieDetails() {
                             {new Date(showtime.showDate).toLocaleDateString('vi-VN')}
                           </p>
                           <p className="text-sm text-gray-600">
-                            {showtime.startTime} - {showtime.endTime}
+                            {formatTime(showtime.startTime)} - {formatTime(showtime.endTime)}
                           </p>
                         </div>
                         <div className="text-right">
@@ -386,6 +428,38 @@ function MovieDetails() {
             </div>
           </form>
         )}
+      </div>
+
+      <div className="mt-6">
+        <h3 className="text-lg font-semibold mb-4">Lịch chiếu hiện tại</h3>
+        <div className="grid gap-4">
+          {showtimes.map(showtime => (
+            <div key={showtime.id} className="border rounded-lg p-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-semibold">{showtime.room.name}</p>
+                  <p className="text-sm text-gray-600">
+                    {new Date(showtime.showDate).toLocaleDateString('vi-VN')}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {formatTime(showtime.startTime)} - {formatTime(showtime.endTime)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold">
+                    {new Intl.NumberFormat('vi-VN', {
+                      style: 'currency',
+                      currency: 'VND'
+                    }).format(showtime.basePrice)}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {showtime.availableSeats} ghế trống
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

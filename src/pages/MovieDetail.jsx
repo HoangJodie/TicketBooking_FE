@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useAuth } from '../contexts/AuthContext'
 import movieAPI from '../services/movieAPI'
+import showtimeAPI from '../services/showtimeAPI'
 
 function MovieDetail() {
   const { id } = useParams()
@@ -10,51 +11,94 @@ function MovieDetail() {
   const { user } = useAuth()
   const [movie, setMovie] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showtimes, setShowtimes] = useState([])
   const [selectedDate, setSelectedDate] = useState('')
+  const [availableDates, setAvailableDates] = useState([])
 
   useEffect(() => {
-    fetchMovieDetails()
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        // Fetch movie details
+        const movieResponse = await movieAPI.getMovieById(id)
+        console.log('Movie response:', movieResponse)
+        
+        if (movieResponse?.data?.status === 'success') {
+          setMovie(movieResponse.data.data)
+        } else {
+          throw new Error('Invalid movie data')
+        }
+
+        // Fetch showtimes
+        const showtimeResponse = await showtimeAPI.getShowtimesByMovie(id)
+        console.log('Showtimes response:', showtimeResponse)
+        
+        if (showtimeResponse?.data?.status === 'success' && Array.isArray(showtimeResponse.data.data)) {
+          setShowtimes(showtimeResponse.data.data)
+          
+          // Get unique dates
+          const dates = [...new Set(showtimeResponse.data.data.map(showtime => 
+            new Date(showtime.showDate).toISOString().split('T')[0]
+          ))].sort()
+          setAvailableDates(dates)
+          
+          // Set default selected date
+          if (dates.length > 0) {
+            setSelectedDate(dates[0])
+          }
+        } else {
+          console.error('Invalid showtimes data:', showtimeResponse)
+          setShowtimes([])
+          setAvailableDates([])
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        toast.error('Không thể tải thông tin phim')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
   }, [id])
 
-  const fetchMovieDetails = async () => {
-    try {
-      setLoading(true)
-      const response = await movieAPI.getMovieById(id)
-      setMovie(response.data)
-      
-      // Set ngày mặc định là ngày đầu tiên có suất chiếu
-      if (response.data.showtimes && response.data.showtimes.length > 0) {
-        setSelectedDate(response.data.showtimes[0].showDate.split('T')[0])
-      }
-    } catch (error) {
-      console.error('Error fetching movie details:', error)
-      toast.error('Không thể tải thông tin phim')
-    } finally {
-      setLoading(false)
-    }
+  // Lọc lịch chiếu theo ngày đã chọn
+  const filteredShowtimes = Array.isArray(showtimes) 
+    ? showtimes.filter(showtime => 
+        new Date(showtime.showDate).toISOString().split('T')[0] === selectedDate
+      )
+    : []
+
+  // Format tiền VND
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(amount)
   }
 
-  const getUniqueDates = () => {
-    if (!movie?.showtimes) return []
-    const dates = new Set(
-      movie.showtimes.map(showtime => showtime.showDate.split('T')[0])
-    )
-    return Array.from(dates).sort()
+  // Format ngày tiếng Việt
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return new Intl.DateTimeFormat('vi-VN', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(date)
   }
 
-  const getShowtimesByDate = (date) => {
-    return movie.showtimes.filter(
-      showtime => showtime.showDate.split('T')[0] === date
-    ).sort((a, b) => a.startTime.localeCompare(b.startTime))
-  }
-
-  const handleShowtimeClick = (showtimeId) => {
-    if (!user) {
-      toast.info('Vui lòng đăng nhập để đặt vé')
-      navigate('/login')
+  const handleBooking = (showtimeId) => {
+    console.log('handleBooking called with:', showtimeId)
+    
+    if (!showtimeId) {
+      console.log('No showtimeId provided')
       return
     }
-    navigate(`/booking/${showtimeId}`)
+
+    const path = `/booking/${showtimeId}`
+    console.log('Navigating to:', path)
+    navigate(path)
   }
 
   if (loading) {
@@ -75,7 +119,8 @@ function MovieDetail() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Movie Details Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
         {/* Poster và trailer */}
         <div className="md:col-span-1">
           <div className="relative aspect-[2/3] mb-4">
@@ -104,7 +149,7 @@ function MovieDetail() {
         <div className="md:col-span-2">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">{movie.title}</h1>
           
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-6">
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <p className="text-gray-600">Thời lượng</p>
@@ -134,71 +179,84 @@ function MovieDetail() {
               </div>
             </div>
 
-            <div className="mb-6">
+            <div>
               <h3 className="text-lg font-semibold mb-2">Nội dung phim</h3>
               <p className="text-gray-700 whitespace-pre-line">{movie.description}</p>
             </div>
-
-            {/* Lịch chiếu */}
-            {movie.showtimes && movie.showtimes.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Lịch chiếu</h3>
-                
-                {/* Chọn ngày */}
-                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                  {getUniqueDates().map(date => (
-                    <button
-                      key={date}
-                      onClick={() => setSelectedDate(date)}
-                      className={`px-4 py-2 rounded-full whitespace-nowrap ${
-                        selectedDate === date
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {new Date(date).toLocaleDateString('vi-VN', {
-                        weekday: 'short',
-                        month: 'numeric',
-                        day: 'numeric'
-                      })}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Danh sách suất chiếu */}
-                <div className="space-y-4">
-                  {getShowtimesByDate(selectedDate).map(showtime => (
-                    <div
-                      key={showtime.id}
-                      className="border rounded-lg p-4 hover:border-indigo-500 transition-colors"
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-semibold">{showtime.room.name}</h4>
-                        <span className="text-gray-600">
-                          {new Intl.NumberFormat('vi-VN', {
-                            style: 'currency',
-                            currency: 'VND'
-                          }).format(showtime.basePrice)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-600">
-                          {showtime.startTime} - {showtime.endTime}
-                        </div>
-                        <button
-                          onClick={() => handleShowtimeClick(showtime.id)}
-                          className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors"
-                        >
-                          Đặt vé
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
+      </div>
+
+      {/* Showtimes Section */}
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-bold mb-6">Lịch chiếu phim</h2>
+        
+        {/* Date Selection */}
+        <div className="mb-8">
+          <h3 className="text-xl font-bold mb-4">Chọn ngày chiếu</h3>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {availableDates.map(date => (
+              <button
+                key={date}
+                onClick={() => setSelectedDate(date)}
+                className={`px-4 py-2 rounded-full whitespace-nowrap ${
+                  selectedDate === date
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              >
+                {formatDate(date)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Showtimes List */}
+        {selectedDate && (
+          <div>
+            <h3 className="text-xl font-bold mb-4">
+              Suất chiếu ngày {formatDate(selectedDate)}
+            </h3>
+            
+            <div className="grid gap-4">
+              {filteredShowtimes.map(showtime => (
+                <div
+                  key={showtime.id}
+                  className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold text-lg">{showtime.room.name}</p>
+                      <p className="text-gray-600">
+                        {showtime.startTime} - {showtime.endTime}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg text-indigo-600">
+                        {formatCurrency(showtime.basePrice)}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {showtime.availableSeats} ghế trống
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleBooking(showtime.id)}
+                    className="mt-4 w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition-colors"
+                  >
+                    Đặt vé
+                  </button>
+                </div>
+              ))}
+
+              {filteredShowtimes.length === 0 && (
+                <p className="text-gray-500 text-center py-8">
+                  Không có suất chiếu nào trong ngày này
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,8 +1,11 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import MovieManagement from '../pages/admin/MovieManagement'
 import MovieDetails from '../pages/admin/MovieDetails'
+import MovieDetail from '../pages/MovieDetail'
+import SeatSelection from '../pages/SeatSelection'
 import { useAuth } from '../contexts/AuthContext'
-// Import các component khác...
+import MainLayout from '../layouts/MainLayout'
+import AdminLayout from '../layouts/AdminLayout'
 
 // HOC để bảo vệ route admin
 const AdminRoute = ({ children }) => {
@@ -21,8 +24,22 @@ const AdminRoute = ({ children }) => {
 
 const router = createBrowserRouter([
   {
+    path: '/',
+    element: <MainLayout />,
+    children: [
+      {
+        path: 'movies/:id',
+        element: <MovieDetail />
+      },
+      {
+        path: 'booking/:showtimeId',
+        element: <SeatSelection />
+      }
+    ]
+  },
+  {
     path: '/admin',
-    element: <AdminLayout />, // Bạn cần có AdminLayout
+    element: <AdminLayout />,
     children: [
       {
         path: 'movies',
@@ -39,11 +56,9 @@ const router = createBrowserRouter([
             <MovieDetails />
           </AdminRoute>
         ),
-      }
-      // Các route khác...
+      },
     ]
   }
-  // Các route khác...
 ])
 
 export default router 

@@ -11,7 +11,19 @@ export const AuthProvider = ({ children }) => {
 
   const getUserFromToken = (token) => {
     try {
+      if (!token || typeof token !== 'string') {
+        console.error('Invalid token format:', token)
+        return null
+      }
+
       const decoded = jwtDecode(token)
+      console.log('Decoded token:', decoded)
+
+      if (!decoded.user_id || !decoded.email) {
+        console.error('Missing required fields in token:', decoded)
+        return null
+      }
+
       return {
         user_id: decoded.user_id,
         email: decoded.email,
@@ -23,49 +35,36 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  useEffect(() => {
-    checkAuth()
-  }, [])
-
-  const checkAuth = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      if (token) {
-        const tokenUser = getUserFromToken(token)
-        if (tokenUser) {
-          setUser(tokenUser)
-        }
-      }
-    } catch (error) {
-      if (error.response?.status === 401) {
-        setUser(null)
-        localStorage.removeItem('token')
-        localStorage.removeItem('refreshToken')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const login = async (credentials) => {
     try {
       const response = await userAPI.login(credentials)
       console.log('Login response:', response)
-      
-      localStorage.setItem('token', response.accessToken)
-      localStorage.setItem('refreshToken', response.refreshToken)
-      
-      const tokenUser = getUserFromToken(response.accessToken)
-      if (tokenUser) {
-        setUser(tokenUser)
-        console.log('Set user state from token:', tokenUser)
-      } else {
+
+      // Kiểm tra response format
+      if (!response?.data?.accessToken) {
+        console.error('Invalid response format:', response)
+        throw new Error('Invalid response format')
+      }
+
+      const { accessToken, refreshToken } = response.data
+      console.log('Tokens:', { accessToken, refreshToken })
+
+      localStorage.setItem('token', accessToken)
+      localStorage.setItem('refreshToken', refreshToken)
+
+      const tokenUser = getUserFromToken(accessToken)
+      if (!tokenUser) {
         throw new Error('Invalid token data')
       }
-      
-      return response
+
+      setUser(tokenUser)
+      console.log('User set from token:', tokenUser)
+      return response.data
+
     } catch (error) {
       console.error('Login error:', error)
+      localStorage.removeItem('token')
+      localStorage.removeItem('refreshToken')
       throw error
     }
   }
@@ -82,12 +81,45 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        console.log('Checking auth with token:', token)
+
+        if (!token) {
+          console.log('No token found')
+          setUser(null)
+          return
+        }
+
+        const tokenUser = getUserFromToken(token)
+        if (tokenUser) {
+          console.log('User restored from token:', tokenUser)
+          setUser(tokenUser)
+        } else {
+          console.log('Invalid token, clearing auth')
+          localStorage.removeItem('token')
+          localStorage.removeItem('refreshToken')
+          setUser(null)
+        }
+      } catch (error) {
+        console.error('Auth check error:', error)
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [])
+
   return (
     <AuthContext.Provider value={{ 
       user, 
       login, 
       logout, 
-      loading
+      loading 
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,111 +1,84 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { toast } from 'react-toastify'
+import { useState, useEffect } from 'react'
+import userAPI from '../services/userAPI'
 
 function Navbar() {
   const { user, logout } = useAuth()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const menuRef = useRef(null)
-  const navigate = useNavigate()
-
-  console.log('Current user in Navbar:', user)
-  console.log('User role:', user?.role_id)
-  
-  const isAdmin = user && Number(user.role_id) === 1
-  console.log('Is admin:', isAdmin)
+  const [userProfile, setUserProfile] = useState(null)
+  const [showDropdown, setShowDropdown] = useState(false)
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsMenuOpen(false)
+    const fetchUserProfile = async () => {
+      if (user) {
+        try {
+          const response = await userAPI.getProfile()
+          if (response?.status === 200 && response?.data) {
+            setUserProfile(response.data)
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error)
+        }
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const handleLogout = async () => {
-    try {
-      const success = await logout()
-      if (success) {
-        setIsMenuOpen(false)
-        navigate('/')
-      }
-    } catch (error) {
-      console.error('Logout error:', error)
-      toast.error('Có lỗi xảy ra khi đăng xuất')
-    }
-  }
+    fetchUserProfile()
+  }, [user])
 
   return (
-    <nav className="bg-gray-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <Link to="/" className="text-white font-bold">
-              Movie App
+    <nav className="bg-white shadow-lg">
+      <div className="container mx-auto px-4">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center space-x-8">
+            <Link to="/" className="text-2xl font-bold text-indigo-600">
+              Cinema
             </Link>
-            <div className="ml-10 flex items-baseline space-x-4">
-              <Link
-                to="/"
-                className="text-gray-300 hover:text-white px-3 py-2 rounded-md"
-              >
+            <div className="hidden md:flex space-x-4">
+              <Link to="/" className="text-gray-700 hover:text-indigo-600">
                 Trang chủ
               </Link>
-              <Link
-                to="/movies"
-                className="text-gray-300 hover:text-white px-3 py-2 rounded-md"
-              >
+              <Link to="/movies" className="text-gray-700 hover:text-indigo-600">
                 Phim
               </Link>
-              {isAdmin && (
-                <Link
-                  to="/admin/movies"
-                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md"
-                >
-                  Quản lý phim
-                </Link>
-              )}
             </div>
           </div>
 
           <div className="flex items-center space-x-4">
             {user ? (
-              <div className="relative" ref={menuRef}>
+              <div className="relative">
                 <button
-                  type="button"
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="flex items-center space-x-2 text-gray-300 hover:text-white px-3 py-2 rounded-md focus:outline-none"
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className="flex items-center space-x-2 text-gray-700 hover:text-indigo-600 focus:outline-none"
                 >
-                  <span>{user.full_name || user.email}</span>
-                  <svg
-                    className={`h-5 w-5 transform ${isMenuOpen ? 'rotate-180' : ''}`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
+                  <span>{userProfile?.full_name || user.email}</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
 
-                {isMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5">
+                {showDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
                     <Link
                       to="/profile"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setIsMenuOpen(false)}
+                      onClick={() => setShowDropdown(false)}
                     >
-                      Thông tin tài khoản
+                      Thông tin cá nhân
                     </Link>
+                    {user.role_id === 1 && (
+                      <Link
+                        to="/admin/movies"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        Quản lý phim
+                      </Link>
+                    )}
                     <button
-                      onClick={handleLogout}
+                      onClick={() => {
+                        logout()
+                        setShowDropdown(false)
+                      }}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Đăng xuất
@@ -114,20 +87,12 @@ function Navbar() {
                 )}
               </div>
             ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md"
-                >
-                  Đăng nhập
-                </Link>
-                <Link
-                  to="/register"
-                  className="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600"
-                >
-                  Đăng ký
-                </Link>
-              </>
+              <Link
+                to="/login"
+                className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+              >
+                Đăng nhập
+              </Link>
             )}
           </div>
         </div>
