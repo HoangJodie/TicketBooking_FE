@@ -6,6 +6,7 @@ import SeatSelection from '../pages/SeatSelection'
 import { useAuth } from '../contexts/AuthContext'
 import MainLayout from '../layouts/MainLayout'
 import AdminLayout from '../layouts/AdminLayout'
+import BookingConfirmation from '../pages/BookingConfirmation'
 
 // HOC để bảo vệ route admin
 const AdminRoute = ({ children }) => {
@@ -34,6 +35,14 @@ const router = createBrowserRouter([
       {
         path: 'booking/:showtimeId',
         element: <SeatSelection />
+      },
+      {
+        path: 'booking-confirmation',
+        element: (
+          <PrivateRoute>
+            <BookingConfirmation />
+          </PrivateRoute>
+        )
       }
     ]
   },
