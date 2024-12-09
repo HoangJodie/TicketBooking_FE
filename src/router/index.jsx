@@ -34,10 +34,22 @@ const router = createBrowserRouter([
       },
       {
         path: 'booking/:showtimeId',
-        element: <SeatSelection />
+        element: (
+          <PrivateRoute>
+            <SeatSelection />
+          </PrivateRoute>
+        )
       },
       {
-        path: 'booking-confirmation',
+        path: 'booking/:showtimeId/confirm',
+        element: (
+          <PrivateRoute>
+            <BookingConfirmation />
+          </PrivateRoute>
+        )
+      },
+      {
+        path: 'booking-confirm/:showtimeId/:seatIds',
         element: (
           <PrivateRoute>
             <BookingConfirmation />

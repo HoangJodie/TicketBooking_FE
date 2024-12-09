@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import bookingAPI from '../services/bookingAPI'
 
 function BookingConfirmation() {
-  const { showtimeId, seatIds } = useParams()
+  const { showtimeId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -19,56 +19,26 @@ function BookingConfirmation() {
       try {
         setLoading(true)
         
-        // Thử lấy từ state trước
-        const { bookingId } = location.state || {}
-        
-        // Nếu không có state, thử lấy từ localStorage
-        if (!bookingId) {
-          const savedBooking = localStorage.getItem('booking_temp')
-          if (savedBooking) {
-            const { bookingId: savedId } = JSON.parse(savedBooking)
-            if (savedId) {
-              // Tiếp tục với savedId
-            } else {
-              toast.error('Thông tin đặt vé không hợp lệ')
-              navigate('/movies')
-              return
-            }
-          }
+        const seatIds = location.state?.seatIds
+        if (!seatIds) {
+          toast.error('Không tìm thấy thông tin ghế đã chọn')
+          navigate('/movies')
+          return
         }
 
-        // Parse seatIds từ URL
-        const seatIdArray = seatIds.split(',').map(Number)
-        
-        // Gọi API với params từ URL
         const response = await bookingAPI.getBookingConfirmation({
           showtimeId: Number(showtimeId),
-          seatIds: seatIdArray.join(',') // Chuyển array thành string với dấu phẩy
+          seatIds: seatIds
         })
 
-        console.log('API Response:', response)
-
         if (response?.data?.status === 'success') {
-          const { confirmation } = response.data.data
-          console.log('Confirmation data:', confirmation)
-          
-          // Validate dữ liệu trước khi set state
-          if (!confirmation?.showtime || !confirmation?.movie || !confirmation?.seats) {
-            throw new Error('Invalid confirmation data')
-          }
-
-          setConfirmation(confirmation)
+          setConfirmation(response.data.data.confirmation)
         } else {
           throw new Error('API response not success')
         }
       } catch (error) {
         console.error('Error in BookingConfirmation:', error)
-        console.error('Error details:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status
-        })
-        toast.error('Không thể tải thông tin đặt vé')
+        toast.error(error.response?.data?.message || 'Không thể tải thông tin đặt vé')
         navigate('/movies')
       } finally {
         setLoading(false)
@@ -81,11 +51,7 @@ function BookingConfirmation() {
     }
 
     fetchConfirmation()
-
-    return () => {
-      localStorage.removeItem('booking_temp')
-    }
-  }, [showtimeId, seatIds, location.state, user, navigate])
+  }, [showtimeId, location.state, user, navigate])
 
   const handleConfirmBooking = async () => {
     try {
@@ -155,7 +121,7 @@ function BookingConfirmation() {
           </div>
         </div>
 
-        {/* Thông tin kh��ch hàng */}
+        {/* Thông tin khách hàng */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h3 className="font-bold mb-4">Thông tin khách hàng</h3>
           <p>Họ tên: {confirmation?.customer.name || 'Chưa cập nhật'}</p>

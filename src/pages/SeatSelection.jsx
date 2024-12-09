@@ -166,12 +166,10 @@ function SeatSelection() {
       console.log('API Response:', response)
 
       if (response?.data?.bookingId) {
-        const seatIdsParam = selectedSeats.map(seat => seat.id).join(',')
-        
-        // Sửa lại đường dẫn navigate
-        navigate(`/booking-confirm/${showtimeId}/${seatIdsParam}`, {
+        navigate(`/booking/${showtimeId}/confirm`, {
           state: { 
-            bookingId: response.data.bookingId 
+            bookingId: response.data.bookingId,
+            seatIds: selectedSeats.map(seat => seat.id)
           }
         })
       } else {

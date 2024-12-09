@@ -12,6 +12,7 @@ import NotFound from '../pages/NotFound';
 import MovieManagement from '../pages/admin/MovieManagement';
 import MovieDetails from '../pages/admin/MovieDetails';
 import SeatSelection from '../pages/SeatSelection';
+import BookingConfirmation from '../pages/BookingConfirmation';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 function AppRoutes() {
@@ -43,12 +44,9 @@ function AppRoutes() {
 
         {/* Protected Routes */}
         <Route
-          path="booking/:showtimeId"
+          path="/booking/:showtimeId"
           element={
-            <ErrorBoundary
-              fallback={<div>Something went wrong</div>}
-              onError={(error) => console.error('Error in SeatSelection:', error)}
-            >
+            <ErrorBoundary>
               <PrivateRoute>
                 <SeatSelection />
               </PrivateRoute>
@@ -56,7 +54,17 @@ function AppRoutes() {
           }
         />
         <Route
-          path="profile"
+          path="/booking/:showtimeId/confirm"
+          element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <BookingConfirmation />
+              </PrivateRoute>
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/profile"
           element={
             <PrivateRoute>
               <Profile />
@@ -66,13 +74,12 @@ function AppRoutes() {
 
         {/* Admin Routes */}
         <Route
-          path="admin/*"
+          path="/admin/*"
           element={
             <PrivateRoute roles={['admin']}>
               <Routes>
                 <Route path="movies" element={<MovieManagement />} />
                 <Route path="movies/:id" element={<MovieDetails />} />
-                {/* Thêm các route admin khác ở đây */}
               </Routes>
             </PrivateRoute>
           }
