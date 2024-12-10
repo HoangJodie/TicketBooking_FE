@@ -110,6 +110,52 @@ const bookingAPI = {
       })
       throw error
     }
+  },
+
+  createZaloPayOrder: async (data) => {
+    try {
+      const { bookingId, redirectUrl } = data
+      
+      if (!bookingId) {
+        throw new Error('Booking ID is required')
+      }
+
+      const response = await axiosClient.post('/api/v1/payments/orders/zalopay', {
+        bookingId: Number(bookingId),
+        redirectUrl
+      })
+
+      console.log('ZaloPay API Response:', response.data)
+
+      return response
+    } catch (error) {
+      console.error('Error creating ZaloPay order:', {
+        message: error.message,
+        response: error.response?.data
+      })
+      throw error
+    }
+  },
+
+  getPaymentStatus: async (bookingId) => {
+    try {
+      if (!bookingId) {
+        throw new Error('Booking ID is required')
+      }
+
+      const response = await axiosClient.get(`/api/v1/payments/status/${bookingId}`)
+      
+      console.log('Payment status response:', response.data)
+      
+      return response
+    } catch (error) {
+      console.error('Error checking payment status:', {
+        message: error.message,
+        response: error.response?.data,
+        endpoint: `/payments/status/${bookingId}`
+      })
+      throw error
+    }
   }
 }
 

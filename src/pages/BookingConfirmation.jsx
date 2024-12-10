@@ -31,6 +31,15 @@ function BookingConfirmation() {
           seatIds: seatIds
         })
 
+        // Log toàn bộ response để kiểm tra
+        console.log('API Response:', response)
+        
+        // Log chi tiết confirmation
+        console.log('Confirmation data:', response?.data?.data?.confirmation)
+        
+        // Log booking ID
+        console.log('Booking ID:', response?.data?.data?.confirmation?.id)
+
         if (response?.data?.status === 'success') {
           setConfirmation(response.data.data.confirmation)
         } else {
@@ -57,25 +66,39 @@ function BookingConfirmation() {
     try {
       setProcessing(true)
       
-      // Xóa thông tin tạm trong localStorage
-      localStorage.removeItem('booking_temp')
+      if (!confirmation?.id) {
+        throw new Error('Không tìm thấy thông tin đặt vé')
+      }
+
+      // Log để debug
+      console.log('Creating ZaloPay order for booking:', confirmation.id)
       
-      // Chuyển đến trang thanh toán
-      navigate('/payment', {
-        state: {
-          bookingId: confirmation.id,
-          showtimeId: confirmation.showtime.id,
-          seatIds: confirmation.seats.map(seat => seat.seatId),
-          totalAmount: confirmation.totalAmount,
-          movieTitle: confirmation.movie.title,
-          showDate: confirmation.showtime.showDate,
-          startTime: confirmation.showtime.startTime,
-          roomName: confirmation.room.name
-        }
+      // Tạo redirect URL với bookingId
+      const redirectUrl = `${window.location.origin}/payment/result?bookingId=${confirmation.id}`
+      
+      // Gọi API tạo đơn hàng ZaloPay
+      const response = await bookingAPI.createZaloPayOrder({
+        bookingId: confirmation.id,
+        redirectUrl
       })
+      
+      console.log('ZaloPay Response:', response.data)
+
+      if (response?.data?.order_url) {
+        // Lưu booking ID vào localStorage
+        localStorage.setItem('pending_payment', JSON.stringify({
+          bookingId: confirmation.id,
+          timestamp: new Date().getTime()
+        }))
+        
+        // Redirect sang trang thanh toán ZaloPay
+        window.location.href = response.data.order_url
+      } else {
+        throw new Error('Không nhận được link thanh toán')
+      }
     } catch (error) {
       console.error('Error in handleConfirmBooking:', error)
-      toast.error('Có lỗi xảy ra, vui lòng thử lại')
+      toast.error(error.response?.data?.message || 'Không thể tạo thanh toán')
     } finally {
       setProcessing(false)
     }
@@ -105,7 +128,7 @@ function BookingConfirmation() {
             <div>
               <h2 className="text-xl font-bold mb-2">{confirmation?.movie.title}</h2>
               <p className="text-gray-600">
-                Suất chiếu: {new Date(confirmation?.showtime.startTime).toLocaleTimeString()}
+                Suất chiếu: {confirmation?.showtime.startTime}
               </p>
               <p className="text-gray-600">
                 Ngày chiếu: {new Date(confirmation?.showtime.showDate).toLocaleDateString()}

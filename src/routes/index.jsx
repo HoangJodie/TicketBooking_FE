@@ -14,6 +14,7 @@ import MovieDetails from '../pages/admin/MovieDetails';
 import SeatSelection from '../pages/SeatSelection';
 import BookingConfirmation from '../pages/BookingConfirmation';
 import ErrorBoundary from '../components/ErrorBoundary';
+import PaymentResult from '../pages/PaymentResult';
 
 function AppRoutes() {
   return (
@@ -81,6 +82,16 @@ function AppRoutes() {
                 <Route path="movies" element={<MovieManagement />} />
                 <Route path="movies/:id" element={<MovieDetails />} />
               </Routes>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Payment Routes */}
+        <Route
+          path="/payment/result"
+          element={
+            <PrivateRoute>
+              <PaymentResult />
             </PrivateRoute>
           }
         />
