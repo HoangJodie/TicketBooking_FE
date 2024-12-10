@@ -156,6 +156,19 @@ const bookingAPI = {
       })
       throw error
     }
+  },
+
+  getMyTickets: async () => {
+    try {
+      const response = await axiosClient.get('/api/v1/bookings/my-tickets')
+      return response
+    } catch (error) {
+      console.error('Error getting tickets:', {
+        message: error.message,
+        response: error.response?.data
+      })
+      throw error
+    }
   }
 }
 

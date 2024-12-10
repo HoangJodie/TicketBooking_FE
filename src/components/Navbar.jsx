@@ -57,17 +57,32 @@ function Navbar() {
                 </button>
 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
-                    <Link
-                      to="/profile"
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                    <Link 
+                      to="/profile" 
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => setShowDropdown(false)}
                     >
                       Thông tin cá nhân
                     </Link>
+                    <Link 
+                      to="/tickets" 
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        className="h-4 w-4 mr-2" 
+                        viewBox="0 0 20 20" 
+                        fill="currentColor"
+                      >
+                        <path d="M2 6a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 100 4v2a2 2 0 01-2 2H4a2 2 0 01-2-2v-2a2 2 0 100-4V6z" />
+                      </svg>
+                      Vé của tôi
+                    </Link>
                     {user.role_id === 1 && (
-                      <Link
-                        to="/admin/movies"
+                      <Link 
+                        to="/admin/movies" 
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={() => setShowDropdown(false)}
                       >
@@ -87,7 +102,7 @@ function Navbar() {
                 )}
               </div>
             ) : (
-              <Link
+              <Link 
                 to="/login"
                 className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
               >

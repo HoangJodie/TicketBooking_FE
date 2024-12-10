@@ -15,6 +15,7 @@ import SeatSelection from '../pages/SeatSelection';
 import BookingConfirmation from '../pages/BookingConfirmation';
 import ErrorBoundary from '../components/ErrorBoundary';
 import PaymentResult from '../pages/PaymentResult';
+import MyTickets from '../pages/MyTickets';
 
 function AppRoutes() {
   return (
@@ -92,6 +93,16 @@ function AppRoutes() {
           element={
             <PrivateRoute>
               <PaymentResult />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Tickets Route */}
+        <Route
+          path="/tickets"
+          element={
+            <PrivateRoute>
+              <MyTickets />
             </PrivateRoute>
           }
         />
