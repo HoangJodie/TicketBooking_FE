@@ -52,18 +52,15 @@ function MovieForm({ initialData, onSubmit }) {
     try {
       const form = new FormData();
       
-      // Validate dữ liệu bắt buộc
       if (!formData.title || !formData.duration || !formData.releaseDate || !formData.genres.length) {
         toast.error('Vui lòng điền đầy đủ thông tin bắt buộc');
         return;
       }
 
-      // Thêm các trường dữ liệu vào FormData
       form.append('title', formData.title);
       form.append('duration', Number(formData.duration));
       form.append('releaseDate', new Date(formData.releaseDate).toISOString().split('T')[0]);
       
-      // Thêm genreIds
       formData.genres.forEach(genre => {
         const genreObj = genres.find(g => g.name === genre);
         if (genreObj) {
@@ -71,7 +68,6 @@ function MovieForm({ initialData, onSubmit }) {
         }
       });
 
-      // Thêm các trường không bắt buộc
       if (formData.description) form.append('description', formData.description);
       if (formData.director) form.append('director', formData.director);
       if (formData.cast) form.append('cast', formData.cast);
@@ -80,7 +76,6 @@ function MovieForm({ initialData, onSubmit }) {
       if (formData.poster instanceof File) form.append('poster', formData.poster);
       if (formData.trailer) form.append('trailer', formData.trailer);
 
-      // Log FormData để debug
       for (let pair of form.entries()) {
         console.log(pair[0] + ': ' + pair[1]);
       }
@@ -127,13 +122,11 @@ function MovieForm({ initialData, onSubmit }) {
         poster: file
       }));
 
-      // Tạo URL để preview
       const previewUrl = URL.createObjectURL(file);
       setPosterPreview(previewUrl);
     }
   };
 
-  // Cleanup URL khi component unmount
   useEffect(() => {
     return () => {
       if (posterPreview) {
@@ -309,7 +302,6 @@ function MovieForm({ initialData, onSubmit }) {
               </p>
             </div>
             
-            {/* Preview Image */}
             {(posterPreview || formData.poster) && (
               <div className="relative w-32 h-48 overflow-hidden rounded-lg border border-gray-200">
                 <img

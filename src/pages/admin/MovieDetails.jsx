@@ -194,7 +194,6 @@ function MovieDetails() {
 
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-6">
-          {/* Poster và trailer */}
           <div className="md:col-span-1">
             <div className="aspect-[2/3] relative mb-4">
               <img

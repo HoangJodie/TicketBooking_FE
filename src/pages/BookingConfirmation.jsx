@@ -31,13 +31,10 @@ function BookingConfirmation() {
           seatIds: seatIds
         })
 
-        // Log toàn bộ response để kiểm tra
         console.log('API Response:', response)
         
-        // Log chi tiết confirmation
         console.log('Confirmation data:', response?.data?.data?.confirmation)
         
-        // Log booking ID
         console.log('Booking ID:', response?.data?.data?.confirmation?.id)
 
         if (response?.data?.status === 'success') {
@@ -69,14 +66,11 @@ function BookingConfirmation() {
       if (!confirmation?.id) {
         throw new Error('Không tìm thấy thông tin đặt vé')
       }
-
       // Log để debug
       console.log('Creating ZaloPay order for booking:', confirmation.id)
       
-      // Tạo redirect URL với bookingId
       const redirectUrl = `${window.location.origin}/payment/result?bookingId=${confirmation.id}`
       
-      // Gọi API tạo đơn hàng ZaloPay
       const response = await bookingAPI.createZaloPayOrder({
         bookingId: confirmation.id,
         redirectUrl
@@ -85,7 +79,6 @@ function BookingConfirmation() {
       console.log('ZaloPay Response:', response.data)
 
       if (response?.data?.order_url) {
-        // Lưu booking ID vào localStorage
         localStorage.setItem('pending_payment', JSON.stringify({
           bookingId: confirmation.id,
           timestamp: new Date().getTime()

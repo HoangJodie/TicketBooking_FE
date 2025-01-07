@@ -8,7 +8,6 @@ import MainLayout from '../layouts/MainLayout'
 import AdminLayout from '../layouts/AdminLayout'
 import BookingConfirmation from '../pages/BookingConfirmation'
 
-// HOC để bảo vệ route admin
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth()
   

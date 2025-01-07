@@ -25,7 +25,6 @@ function AdminNavbar() {
               >
                 Quản lý phim
               </Link>
-              {/* Thêm các menu khác nếu cần */}
             </div>
           </div>
           <div className="flex items-center">
